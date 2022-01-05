@@ -1,5 +1,6 @@
 apply plugin: 'com.android.library'
 
+
 ext.buildWithDebug = false
 
 // command line argument parsing
@@ -45,9 +46,13 @@ gradle.buildFinished { buildResult ->
     }
 }
 
+
+
 android {
     compileSdkVersion 28
     buildToolsVersion "28.0.3"
+
+
 
     lintOptions {
         abortOnError false
@@ -55,7 +60,7 @@ android {
 
     defaultConfig {
         minSdkVersion 28
-        targetSdkVersion 28
+        targetSdkVersion 31
         versionCode 1
         versionName "1.0"
         renderscriptTargetApi 28
@@ -91,8 +96,27 @@ android {
         }
     }
     ndkVersion '21.0.6113669'
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
     compileOnly files('src/main/library/unity_android_player.jar')
+    def camerax_version = "1.0.1"
+// CameraX core library using camera2 implementation
+    implementation "androidx.camera:camera-camera2:$camerax_version"
+// CameraX Lifecycle Library
+    implementation "androidx.camera:camera-lifecycle:$camerax_version"
+// CameraX View class
+    implementation "androidx.camera:camera-view:1.0.0-alpha27"
+}
+
+task copyPlugin(type: Copy){
+    dependsOn assemble
+    from("build/outputs/aar")
+    into("D:/UnityProjects/UnityAndroidNativeCamera/UnityAndroidCamera/Assets/Plugins/Android")
+    include(project.name+"-release.aar")
 }

@@ -1,6 +1,7 @@
 package arp.camera;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.PixelFormat;
 import android.hardware.camera2.CameraAccessException;
@@ -15,16 +16,26 @@ import android.media.ImageReader;
 import android.opengl.GLES20;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.renderscript.RenderScript;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 
+
+
+
+import androidx.annotation.NonNull;
+import androidx.camera.core.*;
+import androidx.camera.lifecycle.ProcessCameraProvider;
+
+import com.google.common.util.concurrent.ListenableFuture;
 import com.unity3d.player.UnityPlayerActivity;
 
 import java.nio.IntBuffer;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 
 
 public class CameraPluginActivity extends UnityPlayerActivity {
@@ -40,7 +51,7 @@ public class CameraPluginActivity extends UnityPlayerActivity {
     private Size _previewSize = new Size(640, 480);
     private CameraDevice _cameraDevice;
     private CameraCaptureSession _captureSession;
-
+    private boolean isGoingUp = false;
 
     private ImageReader _imagePreviewReader;
     private RenderScript _renderScript;
@@ -48,13 +59,23 @@ public class CameraPluginActivity extends UnityPlayerActivity {
     private Surface _previewSurface;
 
     private HandlerThread _handlerThread;
-
+    private ImageCapture imagecapture = null;
 
     @SuppressWarnings("JniMissingFunction")
     public native void nativeInit();
 
     @SuppressWarnings("JniMissingFunction")
     public native void nativeRelease();
+
+    /**
+     * An additional thread for running tasks that shouldn't block the UI.
+     */
+    private HandlerThread mBackgroundThread;
+
+    /**
+     * A {@link Handler} for running tasks in the background.
+     */
+    private Handler mBackgroundHandler;
 
     @Override
     protected void onCreate(Bundle bundle) {
@@ -81,6 +102,7 @@ public class CameraPluginActivity extends UnityPlayerActivity {
         _handlerThread.start();
 
         startCamera();
+        startBackgroundThread();
     }
 
     @Override
@@ -104,7 +126,7 @@ public class CameraPluginActivity extends UnityPlayerActivity {
         }
 
         stopCamera();
-
+        stopBackgroundThread();
         super.onPause();
     }
 
@@ -131,7 +153,7 @@ public class CameraPluginActivity extends UnityPlayerActivity {
         public void onConfigured(CameraCaptureSession session) {
             CameraPluginActivity.this._captureSession = session;
             try {
-                session.setRepeatingRequest(createCaptureRequest(), null, null);
+                session.setRepeatingRequest(createCaptureRequest(), null, mBackgroundHandler);
             } catch (CameraAccessException e) {
                 e.printStackTrace();
             }
@@ -176,7 +198,7 @@ public class CameraPluginActivity extends UnityPlayerActivity {
         try {
             if (_previewSurface != null) {
                 _cameraDevice.createCaptureSession(Arrays.asList(_previewSurface),
-                        _sessionStateCallback, null);
+                        _sessionStateCallback, mBackgroundHandler);
             } else {
                 Log.e(TAG, "failed creating preview surface");
             }
@@ -214,13 +236,14 @@ public class CameraPluginActivity extends UnityPlayerActivity {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
 
                 String pickedCamera = getCamera(manager);
-                manager.openCamera(pickedCamera, _cameraStateCallback, null);
+                manager.openCamera(pickedCamera, _cameraStateCallback, mBackgroundHandler);
 
                 final int previewHeight = _previewSize.getHeight();
                 final int previewWidth = _previewSize.getWidth();
                 _imagePreviewReader = ImageReader.newInstance(previewWidth, previewHeight,
                         PixelFormat.RGBA_8888, MAX_IMAGES);
-
+                _imagePreviewReader.setOnImageAvailableListener(
+                        mOnImageAvailableListener, mBackgroundHandler);
                 _conversionScript = new YuvToRgb(_renderScript, _previewSize, CONVERSION_FRAME_RATE);
                 _conversionScript.setOutputSurface(_imagePreviewReader.getSurface());
                 _previewSurface = _conversionScript.getInputSurface();
@@ -232,6 +255,10 @@ public class CameraPluginActivity extends UnityPlayerActivity {
             e.printStackTrace();
         }
     }
+
+
+
+
 
     private void stopCamera() {
         try {
@@ -269,7 +296,7 @@ public class CameraPluginActivity extends UnityPlayerActivity {
             for (String cameraId : manager.getCameraIdList()) {
                 CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
                 int cameraOrientation = characteristics.get(CameraCharacteristics.LENS_FACING);
-                if (cameraOrientation == CameraCharacteristics.LENS_FACING_BACK) {
+                if (cameraOrientation == CameraCharacteristics.LENS_FACING_FRONT) {
                     return cameraId;
                 }
             }
@@ -284,5 +311,73 @@ public class CameraPluginActivity extends UnityPlayerActivity {
         _update = update;
     }
 
+
+    /* my shit code */
+
+//    private void startCameraX(){
+//        ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(this);
+//        cameraProviderFuture.addListener(()->{
+//                    try {
+//                        ProcessCameraProvider cameraProvider= cameraProviderFuture.get();
+//
+//                        cameraProvider.unbindAll();
+//
+//                        CameraSelector cameraSelector = new CameraSelector.Builder()
+//                                .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+//                                .build();
+//
+//                        Preview preview = new Preview.Builder()
+//                                .build();
+//
+//                        preview.setSurfaceProvider(new Preview.SurfaceProvider(){
+//
+//                            @Override
+//                            public void onSurfaceRequested(@NonNull SurfaceRequest request) {
+//                                request.provideSurface(_previewSurface,getMainExecutor(), (void) -> {
+//                                    _previewSurface.release();
+//
+//                                });
+//                            }
+//                        });
+//
+//                    } catch (ExecutionException e) {
+//                        e.printStackTrace();
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    }
+//                }, getMainExecutor()
+//
+//        );
+//
+//    }
+
+    private void startBackgroundThread() {
+        mBackgroundThread = new HandlerThread("CameraBackground");
+        mBackgroundThread.start();
+        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
+    }
+
+    private void stopBackgroundThread() {
+        mBackgroundThread.quitSafely();
+        try {
+            mBackgroundThread.join();
+            mBackgroundThread = null;
+            mBackgroundHandler = null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private final ImageReader.OnImageAvailableListener mOnImageAvailableListener
+            = new ImageReader.OnImageAvailableListener() {
+
+        @Override
+        public void onImageAvailable(ImageReader reader) {
+            //TODO: IMPLEMENT POSE ANALYSIS HERE
+
+            //mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
+        }
+
+    };
 
 }
