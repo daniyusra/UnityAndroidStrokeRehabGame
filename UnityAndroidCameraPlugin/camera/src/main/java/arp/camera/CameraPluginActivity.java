@@ -1,8 +1,10 @@
 package arp.camera;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.ImageFormat;
 import android.graphics.PixelFormat;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -21,20 +23,32 @@ import android.os.HandlerThread;
 import android.renderscript.RenderScript;
 import android.util.Log;
 import android.util.Size;
+import android.util.SparseIntArray;
 import android.view.Surface;
 
 
 
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.camera.core.*;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.pose.Pose;
+import com.google.mlkit.vision.pose.PoseDetection;
+import com.google.mlkit.vision.pose.PoseDetector;
+import com.google.mlkit.vision.pose.PoseLandmark;
+import com.google.mlkit.vision.pose.defaults.PoseDetectorOptions;
 import com.unity3d.player.UnityPlayerActivity;
 
 import java.nio.IntBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 
@@ -53,6 +67,7 @@ public class CameraPluginActivity extends UnityPlayerActivity {
     private CameraCaptureSession _captureSession;
     private boolean isGoingUp = false;
 
+    private String currentCameraID = "";
     private ImageReader _imagePreviewReader;
     private RenderScript _renderScript;
     private YuvToRgb _conversionScript;
@@ -60,6 +75,12 @@ public class CameraPluginActivity extends UnityPlayerActivity {
 
     private HandlerThread _handlerThread;
     private ImageCapture imagecapture = null;
+    // Base pose detector with streaming frames, when depending on the pose-detection sdk
+    PoseDetectorOptions options =
+            new PoseDetectorOptions.Builder()
+                    .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
+                    .build();
+    PoseDetector poseDetector = PoseDetection.getClient(options);
 
     @SuppressWarnings("JniMissingFunction")
     public native void nativeInit();
@@ -76,6 +97,16 @@ public class CameraPluginActivity extends UnityPlayerActivity {
      * A {@link Handler} for running tasks in the background.
      */
     private Handler mBackgroundHandler;
+
+    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+    static {
+        ORIENTATIONS.append(Surface.ROTATION_0, 0);
+        ORIENTATIONS.append(Surface.ROTATION_90, 90);
+        ORIENTATIONS.append(Surface.ROTATION_180, 180);
+        ORIENTATIONS.append(Surface.ROTATION_270, 270);
+    }
+
+    List<PoseLandmark> currentPoseLandmarks;
 
     @Override
     protected void onCreate(Bundle bundle) {
@@ -196,8 +227,9 @@ public class CameraPluginActivity extends UnityPlayerActivity {
 
     private void setupCameraDevice() {
         try {
-            if (_previewSurface != null) {
-                _cameraDevice.createCaptureSession(Arrays.asList(_previewSurface),
+            Log.i(TAG, "SUS-SETUPCAMDEVICE");
+            if (_imagePreviewReader != null) {
+                _cameraDevice.createCaptureSession(Arrays.asList(_imagePreviewReader.getSurface()),
                         _sessionStateCallback, mBackgroundHandler);
             } else {
                 Log.e(TAG, "failed creating preview surface");
@@ -209,12 +241,14 @@ public class CameraPluginActivity extends UnityPlayerActivity {
 
     private CaptureRequest createCaptureRequest() {
         try {
+            Log.i(TAG, "SUS-CREATECAPTUREREQUEST");
             CaptureRequest.Builder builder =
                     _cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
 
             builder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
 
-            builder.addTarget(_previewSurface);
+            //builder.addTarget(_previewSurface);
+            builder.addTarget(_imagePreviewReader.getSurface());
             return builder.build();
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -223,6 +257,7 @@ public class CameraPluginActivity extends UnityPlayerActivity {
     }
 
     private void startCamera() {
+        Log.i(TAG, "SUS-STARTCAMERA");
         CameraManager manager = (CameraManager) getSystemService(CAMERA_SERVICE);
         try {
 
@@ -236,16 +271,17 @@ public class CameraPluginActivity extends UnityPlayerActivity {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
 
                 String pickedCamera = getCamera(manager);
+                currentCameraID = pickedCamera;
                 manager.openCamera(pickedCamera, _cameraStateCallback, mBackgroundHandler);
 
                 final int previewHeight = _previewSize.getHeight();
                 final int previewWidth = _previewSize.getWidth();
                 _imagePreviewReader = ImageReader.newInstance(previewWidth, previewHeight,
-                        PixelFormat.RGBA_8888, MAX_IMAGES);
+                        ImageFormat.YUV_420_888, MAX_IMAGES);
                 _imagePreviewReader.setOnImageAvailableListener(
                         mOnImageAvailableListener, mBackgroundHandler);
                 _conversionScript = new YuvToRgb(_renderScript, _previewSize, CONVERSION_FRAME_RATE);
-                _conversionScript.setOutputSurface(_imagePreviewReader.getSurface());
+                //_conversionScript.setOutputSurface(_imagePreviewReader.getSurface());
                 _previewSurface = _conversionScript.getInputSurface();
             }
 
@@ -374,10 +410,71 @@ public class CameraPluginActivity extends UnityPlayerActivity {
         @Override
         public void onImageAvailable(ImageReader reader) {
             //TODO: IMPLEMENT POSE ANALYSIS HERE
+            //Log.i("PoseInfo","LIT!");
+            try {
+                int rotation = getRotationCompensation(currentCameraID, _context, true);
 
-            //mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
+                Image baseImage = reader.acquireNextImage();
+
+                InputImage image = InputImage.fromMediaImage(baseImage, rotation);
+                baseImage.close();
+                Task<Pose> result =
+                        poseDetector.process(image)
+                                .addOnSuccessListener(
+                                        new OnSuccessListener<Pose>() {
+                                            @Override
+                                            public void onSuccess(Pose pose) {
+                                                // Task completed successfully
+                                                // ...
+                                                Log.i("PoseInfo","LIT!");
+                                                currentPoseLandmarks = pose.getAllPoseLandmarks();
+                                            }
+                                        })
+                                .addOnFailureListener(
+                                        new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                // Task failed with an exception
+                                                // ...
+                                                e.printStackTrace();
+                                            }
+                                        });
+
+                //image.close();
+
+            } catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+
         }
 
     };
+
+    /**
+     * Get the angle by which an image must be rotated given the device's current
+     * orientation.
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private int getRotationCompensation(String cameraId, Activity activity, boolean isFrontFacing)
+            throws CameraAccessException {
+        // Get the device's current rotation relative to its "native" orientation.
+        // Then, from the ORIENTATIONS table, look up the angle the image must be
+        // rotated to compensate for the device's rotation.
+        int deviceRotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+        int rotationCompensation = ORIENTATIONS.get(deviceRotation);
+
+        // Get the device's sensor orientation.
+        CameraManager cameraManager = (CameraManager) activity.getSystemService(CAMERA_SERVICE);
+        int sensorOrientation = cameraManager
+                .getCameraCharacteristics(cameraId)
+                .get(CameraCharacteristics.SENSOR_ORIENTATION);
+
+        if (isFrontFacing) {
+            rotationCompensation = (sensorOrientation + rotationCompensation) % 360;
+        } else { // back-facing
+            rotationCompensation = (sensorOrientation - rotationCompensation + 360) % 360;
+        }
+        return rotationCompensation;
+    }
 
 }

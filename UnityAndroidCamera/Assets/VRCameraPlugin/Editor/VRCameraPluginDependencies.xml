@@ -1,0 +1,8 @@
+<dependencies>
+    <androidPackages>
+        <androidPackage spec="androidx.camera:camera-camera2:1.0.1"/>
+	<androidPackage spec="androidx.camera:camera-lifecycle:1.0.1"/>
+	<androidPackage spec="androidx.camera:camera-view:1.0.0-alpha27"/>
+	<androidPackage spec="com.google.mlkit:pose-detection:17.0.1-beta7"/>
+    </androidPackages>
+</dependencies>
