@@ -347,6 +347,17 @@ public class CameraPluginActivity extends UnityPlayerActivity {
         _update = update;
     }
 
+    public boolean isBothHandsAboveShoulder(){ // serves as template
+        //Log.i("PoseInfo","GAY");
+       if (currentPoseLandmarks != null){
+           Log.i("PoseInfo3",(String.valueOf(currentPoseLandmarks.get(15).getPosition().y)));
+            if((currentPoseLandmarks.get(15).getPosition().y > currentPoseLandmarks.get(11).getPosition().y)
+            && (currentPoseLandmarks.get(16).getPosition().y > currentPoseLandmarks.get(12).getPosition().y)){
+                return true;
+            }
+       }
+       return false;
+    }
 
     /* my shit code */
 
@@ -417,7 +428,9 @@ public class CameraPluginActivity extends UnityPlayerActivity {
                 Image baseImage = reader.acquireNextImage();
 
                 InputImage image = InputImage.fromMediaImage(baseImage, rotation);
-                baseImage.close();
+
+                //Log.i("PoseInfo2", String.valueOf(rotation));
+
                 Task<Pose> result =
                         poseDetector.process(image)
                                 .addOnSuccessListener(
@@ -426,8 +439,9 @@ public class CameraPluginActivity extends UnityPlayerActivity {
                                             public void onSuccess(Pose pose) {
                                                 // Task completed successfully
                                                 // ...
-                                                Log.i("PoseInfo","LIT!");
+                                                Log.i("PoseInfo2","LIT!");
                                                 currentPoseLandmarks = pose.getAllPoseLandmarks();
+                                                baseImage.close();
                                             }
                                         })
                                 .addOnFailureListener(
@@ -437,13 +451,17 @@ public class CameraPluginActivity extends UnityPlayerActivity {
                                                 // Task failed with an exception
                                                 // ...
                                                 e.printStackTrace();
+                                                baseImage.close();
                                             }
                                         });
 
                 //image.close();
 
+
             } catch (CameraAccessException e) {
                 e.printStackTrace();
+            } catch (IllegalStateException ise){
+                
             }
 
         }
