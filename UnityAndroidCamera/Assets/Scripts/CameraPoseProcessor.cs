@@ -47,5 +47,7 @@ public class CameraPoseProcessor : MonoBehaviour
         {
             displayMaterial.SetColor("_Color", Color.white);
         }
+
+        float b = _androidJavaPlugin.Call<float>("returnPersonAngle");
     }
 }

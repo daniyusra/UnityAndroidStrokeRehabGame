@@ -347,16 +347,55 @@ public class CameraPluginActivity extends UnityPlayerActivity {
         _update = update;
     }
 
+    public float returnPersonAngle(){
+        try {
+            if (currentPoseLandmarks != null) {
+
+                float angle = 0.0F;
+
+                float shoulderXMidpoint = (currentPoseLandmarks.get(12).getPosition().x + currentPoseLandmarks.get(11).getPosition().x) / 2;
+                float shoulderYMidpoint = (currentPoseLandmarks.get(12).getPosition().y + currentPoseLandmarks.get(11).getPosition().y) / 2;
+
+                float hipXMidpoint = (currentPoseLandmarks.get(24).getPosition().x + currentPoseLandmarks.get(23).getPosition().x) / 2;
+                float hipYMidpoint = (currentPoseLandmarks.get(24).getPosition().y + currentPoseLandmarks.get(23).getPosition().y) / 2;
+
+                // the new line is (shoulderXMidpoint,shoulderYMidpoint) -> (hipXMidpoint, hipYMidpoint)
+
+                //float straightlineX1 = 0;
+                //float straightlineX2 = 0;
+                //float straightlineY1 = 1.0F;
+                //float straightlineY2 = 0.0F;
+
+                float angle1 = (float) Math.atan2(shoulderYMidpoint - hipYMidpoint,
+                        shoulderXMidpoint - hipXMidpoint);
+                float angle2 = (float) Math.atan2(-1.0F,
+                        0.0F);
+                Log.i("PoseInfo3", String.valueOf(angle1-angle2));
+                return angle1 - angle2;
+            }
+        } catch (Exception e){
+            e.printStackTrace();
+            return 0F;
+        }
+        return 0F;
+    }
+
+
     public boolean isBothHandsAboveShoulder(){ // serves as template
         //Log.i("PoseInfo","GAY");
-       if (currentPoseLandmarks != null){
-           Log.i("PoseInfo3",(String.valueOf(currentPoseLandmarks.get(15).getPosition().y)));
-            if((currentPoseLandmarks.get(15).getPosition().y > currentPoseLandmarks.get(11).getPosition().y)
-            && (currentPoseLandmarks.get(16).getPosition().y > currentPoseLandmarks.get(12).getPosition().y)){
-                return true;
+        try {
+            if (currentPoseLandmarks != null) {
+                //Log.i("PoseInfo3", (String.valueOf(currentPoseLandmarks.get(15).getPosition().y)));
+                if ((currentPoseLandmarks.get(15).getPosition().y < currentPoseLandmarks.get(11).getPosition().y)
+                        && (currentPoseLandmarks.get(16).getPosition().y < currentPoseLandmarks.get(12).getPosition().y)) {
+                    return true;
+                }
             }
-       }
-       return false;
+            return false;
+        } catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
     }
 
     /* my shit code */
