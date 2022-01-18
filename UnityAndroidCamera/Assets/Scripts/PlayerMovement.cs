@@ -23,6 +23,7 @@ public class PlayerMovement : MonoBehaviour
         Vector3 forwardMove = transform.forward * speed * Time.fixedDeltaTime;
         Vector3 horizontalMove = transform.right * horizontalInput * speed * Time.fixedDeltaTime * horizontalMultiplier;
         rb.MovePosition(rb.position + forwardMove + horizontalMove);
+        Debug.Log(rb.position.x + " " + rb.position.y + " " + rb.position.z);
     }
 
     // Update is called once per frame

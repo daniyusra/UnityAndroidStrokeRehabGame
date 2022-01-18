@@ -370,8 +370,8 @@ public class CameraPluginActivity extends UnityPlayerActivity {
                         shoulderXMidpoint - hipXMidpoint);
                 float angle2 = (float) Math.atan2(-1.0F,
                         0.0F);
-                Log.i("PoseInfo3", String.valueOf(angle1-angle2));
-                return angle1 - angle2;
+                Log.i("PoseInfo3", String.valueOf((angle1-angle2)*180));
+                return (angle1 - angle2)*180;
             }
         } catch (Exception e){
             e.printStackTrace();
