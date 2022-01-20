@@ -11,7 +11,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] Text scoreText;
     [SerializeField] PlayerMovement playerMovement;
 
-    public void IncrementScore ()
+    public void IncrementScore()
     {
         score++;
         scoreText.text = "SCORE: " + score;
@@ -20,7 +20,7 @@ public class GameManager : MonoBehaviour
         playerMovement.speed += playerMovement.speedIncreasePerPoint;
     }
 
-    private void Awake ()
+    private void Awake()
     {
         inst = this;
     }
@@ -28,12 +28,12 @@ public class GameManager : MonoBehaviour
     // Start is called before the first frame update
     private void Start()
     {
-        
+
     }
 
     // Update is called once per frame
     private void Update()
     {
-        
+
     }
 }

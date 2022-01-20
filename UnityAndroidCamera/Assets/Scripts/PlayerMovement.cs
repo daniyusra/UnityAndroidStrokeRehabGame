@@ -16,7 +16,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float jumpForce = 400f;
     [SerializeField] LayerMask groundMask;
 
-    private void FixedUpdate ()
+    private void FixedUpdate()
     {
         if (!alive) return;
 
@@ -42,19 +42,19 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    public void Die ()
+    public void Die()
     {
         alive = false;
         // restart the game
         Invoke("Restart", 2);
     }
 
-    void Restart ()
+    void Restart()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    void Jump ()
+    void Jump()
     {
         // check if grounded
         float height = GetComponent<Collider>().bounds.size.y;
