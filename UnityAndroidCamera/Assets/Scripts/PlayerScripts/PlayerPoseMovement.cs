@@ -80,12 +80,15 @@ public class PlayerPoseMovement : MonoBehaviour
     {
         alive = false;
         // restart the game
-        Invoke("Restart", 2);
+        //Invoke("Restart", 2);
+        GameManager.inst.GameOver();
+
     }
 
     void Restart()
     {
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        //SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        
     }
 
     void Jump()

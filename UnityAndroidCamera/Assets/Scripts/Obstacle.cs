@@ -5,12 +5,12 @@ using UnityEngine;
 public class Obstacle : MonoBehaviour
 {
 
-    PlayerMovement playerMovement;
+    PlayerPoseMovement playerMovement;
 
     // Start is called before the first frame update
     void Start()
     {
-        playerMovement = GameObject.FindObjectOfType<PlayerMovement>();
+        playerMovement = GameObject.FindObjectOfType<PlayerPoseMovement>();
     }
 
     void OnCollisionEnter (Collision collision)

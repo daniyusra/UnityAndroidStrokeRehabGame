@@ -7,9 +7,18 @@ public class GameManager : MonoBehaviour
 {
     int score;
     public static GameManager inst;
+    public GameOverScreen gameOverScreen;
+
 
     [SerializeField] Text scoreText;
     [SerializeField] PlayerMovement playerMovement;
+    
+
+    public void GameOver()
+    {
+        Debug.Log("BRUH");
+        gameOverScreen.Setup(score);
+    }
 
     public void IncrementScore()
     {
