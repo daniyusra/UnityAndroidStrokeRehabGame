@@ -154,7 +154,7 @@ PlayerSettings:
   androidMaxAspectRatio: 2.1
   applicationIdentifier:
     Android: com.ARP.Camera
-    Standalone: arp.Camera
+    Standalone: com.ARP.Camera
     iPhone: arp.camera
     tvOS: arp.camera
   buildNumber:
@@ -791,6 +791,7 @@ PlayerSettings:
   gcWBarrierValidation: 0
   apiCompatibilityLevelPerPlatform:
     Android: 3
+    Standalone: 3
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
   metroPackageName: UnityAndroidCamera
