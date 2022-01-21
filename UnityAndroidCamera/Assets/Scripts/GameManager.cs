@@ -8,6 +8,7 @@ public class GameManager : MonoBehaviour
     int score;
     public static GameManager inst;
     public GameOverScreen gameOverScreen;
+    public EmailSurveyPanel emailSurveyPanel;
 
 
     [SerializeField] Text scoreText;
@@ -17,6 +18,14 @@ public class GameManager : MonoBehaviour
     public void GameOver()
     {
         Debug.Log("BRUH");
+        int number = Random.Range(1, 10);
+
+        //if(number == 2)
+        if(true)
+        {
+            emailSurveyPanel.gameObject.SetActive(true);
+        }
+
         gameOverScreen.Setup(score);
     }
 

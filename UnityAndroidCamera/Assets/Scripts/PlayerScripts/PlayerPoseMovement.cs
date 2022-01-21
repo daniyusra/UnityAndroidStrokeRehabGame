@@ -48,6 +48,8 @@ public class PlayerPoseMovement : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (!alive) return;
+
         horizontalInput = Input.GetAxis("Horizontal");
 
         float playerAngle = _androidJavaPlugin.Call<float>("returnPersonAngle");
