@@ -4,6 +4,9 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Data.SqlClient;
+using UnityEngine.Networking;
+using System;
+using System.Text;
 
 public class EmailSurveyPanel : MonoBehaviour
 {
@@ -30,26 +33,46 @@ public class EmailSurveyPanel : MonoBehaviour
     public void GetAndSendEmail()
     {
         string email = Field.text;
-        try { 
+        
         if (Regex.IsMatch(email, MatchEmailPattern))
         {
-            string connstring = "Server=tcp:unityposedetection.database.windows.net,1433;Initial Catalog=unityposedetection;Persist Security Info=False;User ID=daniyusra;Password=ImagineCup2022;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
-            SqlConnection conn = new SqlConnection(connstring);
-            conn.Open();
-            //SqlCommand cmd = new SqlCommand("Insert Into userData Values ('COK5', 'COK', 'COK', '20120618 10:34:09 AM')", conn);
-            string s = string.Format("Insert Into userData Values ('{0}','{1}','{2}','{3}'",email,"TEST", "TEST", System.DateTime.Now );
-            SqlCommand cmd = new SqlCommand(s,conn);
-            cmd.ExecuteNonQuery();
-            conn.Close();
-            gameObject.SetActive(false);
+            
+            
+            MyClass myrequest = new MyClass();
+            myrequest.taskName = email;
+            myrequest.isComplete = true;
+            //StartCoroutine(SendMail(email));
+
+
+
+            string json = JsonUtility.ToJson(myrequest);
+            StartCoroutine(SendMail(json));
+
+            //gameObject.SetActive(false);
         } else
         {
             Field.text = "Put proper email!";
         }
-        } catch (System.Exception e)
-        {
-            Debug.Log(e.Message);
-        }
+
+    }
+
+    [Serializable]
+    public class MyClass
+    {
+        public string taskName;
+        public bool isComplete;
+    }
+
+    IEnumerator SendMail(string jsonstring)
+    {
+        var request = new UnityWebRequest("https://virtuostroke.azurewebsites.net/api/todoitems", "POST");
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonstring);
+        request.uploadHandler = (UploadHandler)new UploadHandlerRaw(bodyRaw);
+        request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+        yield return request.SendWebRequest();
+        Debug.Log("Status Code: " + request.responseCode);
+        gameObject.SetActive(false);
 
     }
 

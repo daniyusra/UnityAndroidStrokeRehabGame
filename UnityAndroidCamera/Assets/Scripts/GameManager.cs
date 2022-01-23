@@ -20,8 +20,7 @@ public class GameManager : MonoBehaviour
         Debug.Log("BRUH");
         int number = Random.Range(1, 10);
 
-        //if(number == 2)
-        if(true)
+        if(number == 2)
         {
             emailSurveyPanel.gameObject.SetActive(true);
         }

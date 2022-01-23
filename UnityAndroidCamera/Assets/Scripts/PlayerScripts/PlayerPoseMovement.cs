@@ -62,9 +62,12 @@ public class PlayerPoseMovement : MonoBehaviour
         playerAngle = Mathf.Round(playerAngle);
         playerAngle = -playerAngle;
 
-        Vector3 horizontalMove = transform.right * (((playerAngle/maxDeg*maxX)- rb.position.x));
+        //Vector3 horizontalMove = transform.right * (((playerAngle/maxDeg*maxX)- rb.position.x));
 
-        rb.MovePosition(rb.position + horizontalMove);
+
+        transform.position = new Vector3(playerAngle/maxDeg*maxX, transform.position.y, transform.position.z);
+
+        //rb.MovePosition(rb.position + horizontalMove);
 
 
         if (Input.GetKeyDown(KeyCode.Space))
