@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -7,6 +9,9 @@ public class PlayerPoseMovement : MonoBehaviour
 
     public float speed = 5;
     [SerializeField] Rigidbody rb;
+
+    List<float> movingAvg = new List<float>();
+
 
     float horizontalInput;
     [SerializeField] float horizontalMultiplier = 2;
@@ -59,13 +64,37 @@ public class PlayerPoseMovement : MonoBehaviour
             playerAngle = maxDeg * Mathf.Abs(playerAngle) / playerAngle;
         }
 
-        playerAngle = Mathf.Round(playerAngle);
+        //playerAngle = Mathf.Round(playerAngle);
         playerAngle = -playerAngle;
 
+
+        if (movingAvg.Count == 5)
+        {
+            movingAvg.RemoveAt(0);
+            movingAvg.Add(playerAngle);
+        } else
+        {
+            movingAvg.Add(playerAngle);
+        }
         //Vector3 horizontalMove = transform.right * (((playerAngle/maxDeg*maxX)- rb.position.x));
 
+        float newAngle = 0;
 
-        transform.position = new Vector3(playerAngle/maxDeg*maxX, transform.position.y, transform.position.z);
+        for(int i = 0; i < movingAvg.Count; i++)
+        {
+            newAngle += movingAvg[i];
+        }
+
+        newAngle /= movingAvg.Count;
+        newAngle = Mathf.Round(newAngle);
+
+        if (Mathf.Abs(newAngle-playerAngle) > 6)
+        {
+            newAngle = playerAngle;
+            movingAvg = new List<float>();
+        }
+
+        transform.position = new Vector3(newAngle/maxDeg*maxX, transform.position.y, transform.position.z);
 
         //rb.MovePosition(rb.position + horizontalMove);
 
